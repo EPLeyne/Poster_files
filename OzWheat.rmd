@@ -1,0 +1,212 @@
+---
+title: A pipeline to OzWheat joy
+business_unit: Agriculture and Food
+theme: teal #options are midday, blueberry, sky, teal, mint, and forest
+
+author:  "Emmett Leyne"
+github_link: www.github.com/EPLeyne/DS_SynthesisProject
+#dap_link: https://doi.org/10.4225/08/5756169E381CC # optional
+photo: resources/img/ELpic.jpg
+
+title_textsize: 140pt         # Poster title fontsize
+
+# A0 portrait size. Only option for now.
+poster_height: "1189mm" # height in inches of poster
+poster_width: "841mm" # width in inches of poster
+
+output: 
+  posterdown::posterdown_html:
+    self_contained: FALSE
+    number_sections: FALSE
+    template: resources/html/template.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  results = 'asis',
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center'
+)
+
+#Load libraries
+library(tidyverse)
+library(gapminder)
+library(gganimate)
+library(kableExtra)
+library(DiagrammeR)
+```
+
+
+# Introduction
+Research Technician from Agriculture and Food in the Cereal Genomics Program.
+Before Data School I was primarily in the world of 'Data Production' in the molecular biology field working with DNA and RNA.
+I manage the High Throughput Genomics Facility and am Data Custodian for the OzWheat project.
+I was self taught in R and Python coding but could only do a small amount.
+
+# My Synthesis Project
+OzWheat Diversity Panel is a collection of 289 lines of wheat that are historically important in Australia.
+The OzWheat project aims to harness the big data of crop genomics and machine learning to predict yields.
+As part of the OzWheat project rna is extracted from all samples across the panel and from multiple sites and growing conditions and sequenced.
+My Data School synthesis project was to automate the process of sequence analysis to knit the tools together in one easy pipeline.
+The goal was to be able to run the entire pipeline with three inputs, the raw data file location, the project name and a CSIRO ident.
+The raw data were the rna sequence data of a small pilot trial conducted in 2016.
+The approach is to build a master batch file that will hold all the variables and call the separate scripts for the individual tools.
+
+# My Digital Toolbox
+
+* Python
+* HPC
+* Shell/Bash
+
+## Favourite tool
+
+Even though I haven't used it in the project my favourite tool is R and the Tidyverse.
+The syntax of R is much easier for me, although I find Python better for non-statistical purposes.
+
+# My time went ...
+
+Too fast, there were a few speed bumps along the way that really slowed me down. I learned that I like the parts that other's don't like data munging
+and error solving, but I can get fixated on those if I let it.
+The most difficult step was to create lists of files in certain formats for each tool that was used in the pipeline. I ended up having to re-write major
+parts of the working script to do it.
+A lot of mental energy went into deciding how to manage the data, especially once I recognised the size of the files that were outputted by the scripts.
+I would have also liked to have completed some data analysis.
+
+# Next steps
+
+* To complete the pipeline and integrate existing pipeline methods such as SnakeMate.
+* Make the pipeline more flexible by giving researchers options of which tool they would like to use.
+* Complete the Data Charter for the OzWheat project using the Tidy data lessons from Data School. 
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+
+
+**Pipeline**
+
+The pipeline of the sequence analysis with the green folders representing the inputs, the blue circles are the programs on the HPC used and the red folders are the outputs. 
+
+#### Workflow of OzWheat Pipeline
+```{r standard-plot1, out.width='100%', fig.align='center', fig.height= 10, fig.width=8}
+
+ grViz("
+ digraph boxes_and_circles {
+
+   # a 'graph' statement
+   graph [overlap = true, fontsize = 10]
+
+   # several 'node' statements
+   node [shape = folder,
+         fontname = Helvetica,
+         style = filled,
+         fillcolor = YellowGreen]
+   'raw seq'; 'reference genome'
+
+   node [shape = oval,
+         fontname = Helvetica,
+         style = filled,
+         fillcolor = Gold2]
+   'filenames.csv'; 'split_filenames.txt'
+
+   node [shape = folder,
+         fillcolor = red,
+         fontname = Helvetica]
+   'quality scores'; 'Denovo reads'; 'Denovo results'; 'SNP assembly'
+
+   node [shape = circle,
+         fillcolor = LightSteelBlue2]
+   trimmomatic; fastqc; trinity; bowtie1; bowtie2; star; GATK
+   
+   node [shape = box,
+        fillcolor = DarkOrange2,
+        fontname = Helvetica]
+   'Denovo Assembly'; SNP
+
+   # 'edge' statements
+  'raw seq' -> {fastqc 'filenames.csv' 'split_filenames.txt'}
+  fastqc -> {trimmomatic 'quality scores' 'Denovo Assembly'}
+  trimmomatic -> fastqc
+'Denovo Assembly' -> trinity
+trinity -> 'Denovo reads'
+trinity -> bowtie1
+'reference genome' -> bowtie1
+bowtie1 -> 'Denovo results'
+trimmomatic -> SNP
+SNP -> bowtie2
+SNP -> star
+bowtie2 -> GATK
+GATK -> 'SNP assembly'
+star -> GATK
+'filenames.csv' -> fastqc
+'split_filenames.txt' -> trinity
+
+ }
+ ")
+```
+
+#### Connections from the master file to the tools
+```{r standard-plot, out.width='100%', fig.align='center', fig.height= 10, fig.width=8}
+grViz("
+      digraph boxes_and_circles {
+      
+      # a 'graph' statement
+      graph [overlap = true, fontsize = 10]
+      
+      # several 'node' statements
+      node [shape = oval,
+      fontname = Helvetica,
+      fixedsize = true,
+      style = filled,
+      fillcolor = YellowGreen]
+      'boss_batch.sh'
+      
+      node [shape = circle,
+      fontname = Helvetica,
+      style = filled,
+      fillcolor = Gold2]
+      'filenames.py'
+      
+      node [shape = circle,
+      fillcolor = red,
+      fontname = Helvetica]
+      'fastqc.sh'; 'trim.sh'; 'trinity.sh'; 'bowtie.sh'; 'star.sh'; 'gatk.sh'
+      
+      # 'edge' statements
+      'boss_batch.sh'->{'filenames.py' 'fastqc.sh' 'trim.sh' 'trinity.sh' 'bowtie.sh' 'star.sh'}
+      'filenames.py' -> {'fastqc.sh' 'trinity.sh'}
+      'fastqc.sh' -> {'trim.sh' 'trinity.sh'}
+      'trim.sh' -> {'bowtie.sh' 'star.sh'}
+      {'bowtie.sh' 'star.sh'} -> 'gatk.sh'
+      }
+      ")
+```
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+# My Data School Experience
+
+Before the Data School my data skills were based on Excel, Excel, Excel, and in all my projects all data management was based on the discretion of individual staff members. Data loccations, file names and variable names were an eccentric mix across all the people in a project.
+
+Since Data School and in an external collaboration with NPI I managed the field trials in R instead of Excel as I would have previously. This decision has paid off many times as the external collaborators repeatedly asked for changes to be made or sent me new data for field trials that I was able to make the changes very quickly.
+
+I have also been made the data custodian of the OzWheat project and have created a Data Charter from the lessons in Data School that defines all aspects of the data collection including file names and locations, standardised variable names, date formats, etc. This Charter has since been used by the AF Digital Coordinator as an example for other projects and can be directly attributable to the Data School.
